@@ -33,9 +33,9 @@ if uploaded_file:
 
         with st.spinner("Detecting products in image..."):
             results = model(image)
-            results.render()
+            annotated_img = results[0].plot()
 
-        st.image(results.imgs[0], caption="Detected Products", use_column_width=True)
+        st.image(annotated_img, caption="Detected Products", use_column_width=True)
 
     #If video
     elif file_type == "video/mp4":
@@ -64,29 +64,31 @@ if uploaded_file:
                 if not ret:
                     break
 
-                #Convert frame for detection
+                # Convert frame to RGB
                 img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 results = model(img_rgb)
-                results.render()
-                annotated_frame = cv2.cvtColor(results.imgs[0], cv2.COLOR_RGB2BGR)
 
-                #Save annotated video
+                # Get annotated RGB image
+                annotated_rgb = results[0].plot()
+                annotated_frame = cv2.cvtColor(annotated_rgb, cv2.COLOR_RGB2BGR)
+
+                # Write to output video
                 out.write(annotated_frame)
 
-                #Collect preview frames
+                # Store preview images
                 if frame_count < max_preview_frames:
-                    preview_images.append(results.imgs[0])
+                    preview_images.append(annotated_rgb)
                 frame_count += 1
 
         cap.release()
         out.release()
 
-        #Show preview frames
+        #Show preview
         st.subheader("🔍 Detection Preview (First few frames)")
         for i, preview in enumerate(preview_images):
             st.image(preview, caption=f"Frame {i + 1}", use_column_width=True)
 
-        #Display processed video
+        #Show processed video
         st.subheader("🎞️ Full Annotated Video")
         st.video(output_path)
 
