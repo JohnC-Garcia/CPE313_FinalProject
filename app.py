@@ -9,7 +9,7 @@ import numpy as np
 st.set_page_config(page_title="Fast Product Detection Demo")
 
 st.title("Product Detection on Store Shelves")
-st.write("Disclaimer: This demo simulates detection only for the first few frames if the file uploaded is a video.")
+st.write("This demo simulates detection only for the first few frames if the file uploaded is a video.")
 
 @st.cache_resource
 def load_model():
