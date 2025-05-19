@@ -4,6 +4,7 @@ from PIL import Image
 import cv2
 import tempfile
 import os
+import numpy as np
 
 st.set_page_config(page_title="Fast Product Detection Demo")
 
@@ -15,6 +16,14 @@ def load_model():
     return RTDETR("weights.pt")
 
 model = load_model()
+
+def draw_frame_number_rgb(image_rgb, frame_idx):
+    image_with_text = image_rgb.copy()
+    # Convert RGB to BGR for OpenCV text drawing, then back to RGB
+    image_bgr = cv2.cvtColor(image_with_text, cv2.COLOR_RGB2BGR)
+    cv2.putText(image_bgr, f"Frame {frame_idx}", (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+    return cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
 
 uploaded_file = st.file_uploader("Upload an image or video", type=["jpg", "jpeg", "png", "mp4"])
 if uploaded_file:
@@ -45,7 +54,12 @@ if uploaded_file:
                 frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 result = model(frame_rgb)
                 annotated = result[0].plot()
-                preview_pairs.append((frame_rgb, annotated))
+
+                # Add frame number overlay to both
+                orig_with_number = draw_frame_number_rgb(frame_rgb, frame_count)
+                annotated_with_number = draw_frame_number_rgb(annotated, frame_count)
+
+                preview_pairs.append((orig_with_number, annotated_with_number))
             frame_count += 1
 
         cap.release()
