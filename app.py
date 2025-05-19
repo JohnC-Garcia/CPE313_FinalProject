@@ -4,85 +4,52 @@ from PIL import Image
 import cv2
 import tempfile
 import os
-import numpy as np
 
-#Page title
-st.set_page_config(page_title="Product Detector")
+st.set_page_config(page_title="Fast Product Detection Demo")
 
-#Title
-st.title("🛒 Product Detection on Store Shelves")
-st.write("Upload an image or video of a store shelf to detect products using a fine-tuned RTDETR-L model.")
+st.title("🛒 Fast Product Detection Preview")
+st.write("This demo simulates detection on a few frames from your uploaded video.")
 
 @st.cache_resource
 def load_model():
-    model = RTDETR("weights.pt")
-    return model
+    return RTDETR("weights.pt")
 
 model = load_model()
 
-uploaded_file = st.file_uploader("Choose an image or a video file...", type=["jpg", "jpeg", "png", "mp4"])
-
+uploaded_file = st.file_uploader("Upload an image or video", type=["jpg", "jpeg", "png", "mp4"])
 if uploaded_file:
-    file_type = uploaded_file.type
+    if uploaded_file.type.startswith("image"):
+        img = Image.open(uploaded_file).convert("RGB")
+        st.image(img, caption="Uploaded Image")
+        st.spinner("Detecting...")
+        result = model(img)
+        st.image(result[0].plot(), caption="Detected Products")
 
-    #If image
-    if file_type.startswith("image"):
-        image = Image.open(uploaded_file).convert("RGB")
-        st.image(image, caption="Uploaded Image", use_column_width=True)
+    elif uploaded_file.type == "video/mp4":
+        st.video(uploaded_file)
+        st.write("Processing video (only 5 frames)...")
 
-        with st.spinner("Detecting products in image..."):
-            results = model(image)
-            annotated_img = results[0].plot()
-
-        st.image(annotated_img, caption="Detected Products", use_column_width=True)
-
-    #If video
-    elif file_type == "video/mp4":
-        st.video(uploaded_file, format="video/mp4")
-        st.write("Processing video... (every 5th frame)")
-
+        # Save video temporarily
         tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
         tfile.write(uploaded_file.read())
-        tfile.flush()
 
         cap = cv2.VideoCapture(tfile.name)
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        fps = cap.get(cv2.CAP_PROP_FPS)
-
-        output_path = os.path.join(tempfile.gettempdir(), "detected_video.mp4")
-        out = cv2.VideoWriter(output_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (width, height))
-
         frame_count = 0
         preview_images = []
 
-        with st.spinner("Running detection..."):
-            while cap.isOpened():
-                ret, frame = cap.read()
-                if not ret:
-                    break
-
-                if frame_count % 5 == 0:
-                    img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    results = model(img_rgb)
-                    annotated_rgb = results[0].plot()
-                    annotated_frame = cv2.cvtColor(annotated_rgb, cv2.COLOR_RGB2BGR)
-                else:
-                    annotated_frame = frame
-
-                out.write(annotated_frame)
-
-                if frame_count < 25 and frame_count % 5 == 0:
-                    preview_images.append(cv2.cvtColor(annotated_frame, cv2.COLOR_BGR2RGB))
-
-                frame_count += 1
+        while cap.isOpened() and len(preview_images) < 5:
+            ret, frame = cap.read()
+            if not ret:
+                break
+            if frame_count % 10 == 0:
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                result = model(frame_rgb)
+                preview = result[0].plot()
+                preview_images.append(preview)
+            frame_count += 1
 
         cap.release()
-        out.release()
 
-        st.subheader("🔍 Detection Preview (Every 5th Frame)")
-        for i, preview in enumerate(preview_images):
-            st.image(preview, caption=f"Frame {i * 5 + 1}", use_column_width=True)
-
-        st.subheader("🎞️ Full Annotated Video")
-        st.video(output_path)
+        st.subheader("🔍 Detection Preview")
+        for i, frame in enumerate(preview_images):
+            st.image(frame, caption=f"Preview Frame {i+1}")
