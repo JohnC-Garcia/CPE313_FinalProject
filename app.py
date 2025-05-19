@@ -8,8 +8,7 @@ import os
 st.set_page_config(page_title="Fast Product Detection Demo")
 
 st.title("🛒 Fast Product Detection Preview")
-st.write("This demo simulates detection on a few frames from your uploaded video.")
-
+st.write("Disclaimer: This demo simulates detection only for the first few frames if the file you uploaded is a video.")
 @st.cache_resource
 def load_model():
     return RTDETR("weights.pt")
